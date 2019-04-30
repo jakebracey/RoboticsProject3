@@ -16,6 +16,7 @@
 #define MAGENTA         0xF81F
 #define YELLOW          0xFFE0  
 #define WHITE           0xFFFF
+#define SCREEN_COLOR    BLACK
 
 //Screen PIN definitions
 #define CLK 2
@@ -31,14 +32,16 @@
 #define toggleL   10
 #define toggleR   11
 #define SwitchSys 12
+#define scaleUP 20 
+#define scaleDOWN 21
 
 //Serial Definitions
 #define serial3RX 50
 #define serial3TX 51
 
 typedef struct{
-  int timeOfDay;
   int pillBay;
+  int timeOfDay;
   int numOfPills;
 }pillInfo;
 
@@ -64,11 +67,8 @@ String timeString;
 String timeA = "07:59:30";
 String timeB = "08:02:00";
 String timeC = "08:03:00";
-pillInfo bay1 = {0,1,0};
-pillInfo bay2 = {0,2,0};
-pillInfo bay3 = {0,3,0};
-pillInfo bay4 = {0,4,0};
-
+pillInfo bay[5];
+int currentBay = 1;
 
 void setup() {
     //pin initializations
@@ -78,48 +78,81 @@ void setup() {
     pinMode(toggleL, INPUT_PULLUP);
     pinMode(toggleR, INPUT_PULLUP);
     pinMode(SwitchSys, INPUT_PULLUP);
+    pinMode(scaleUP, INPUT_PULLUP);
+    pinMode(scaleDOWN, INPUT_PULLUP);
 
     Serial.begin(9600);
     serial3.begin(9600);
     tft.begin();
-    tft.fillScreen(BLACK);
-//    tft.setTextColor(YELLOW, BLACK);
-//    tft.setCursor(70, 1);
-//    tft.print("HH:MM:SS");
-
+    tft.fillScreen(SCREEN_COLOR);
+    bay[1]={1,0,10};
+    bay[2]={2,0,0};
+    bay[3]={3,0,0};
+    bay[4]={4,0,0};
+    
 }
 
 void loop() {
-  
+  //changeBays(0);
   checkSwitchSysState();
 
-  
+  //ON - Pill Dispensing Mode
   if(SwitchSysState == LOW){
-    
+    displayStatic();
   }
-
+  
+  //OFF - Setup Mode
   else{
-
     
-  }
-if (serial3.available()>0) {
-    timeString = getSerialString(serial3);
-    Serial.println(timeString);
-    if(timeString == timeA){
-        Serial.println("hey there");
-      }
-  }
-  if (Serial.available()) {
-    serial3.write(Serial.read());
-  }
+      displayStaticMenu(bay[currentBay]);
       checkButtons();
+  }
+         
       
       
-      displayStatic();
-      displayStaticMenu(1,1);
 }//END of Loop
 
 
+void changeBays(int bayNumber){
+  tft.fillScreen(SCREEN_COLOR);
+  tft.setTextSize(2);
+  tft.setTextColor(RED, BLACK);
+  tft.setCursor(10,40);
+  tft.print("Moving To");
+  switch(bayNumber){
+    case 0:
+      tft.setCursor(10,40);
+      tft.print("Moving To");
+      tft.setCursor(14,70);
+      tft.print("Stand By");
+      while(digitalRead(scaleDOWN) == HIGH){
+         tft.fillRoundRect(0 , 0, 128, 30, 0, RED);
+         tft.fillRoundRect(0 , 98, 128, 30, 0, SCREEN_COLOR);
+         delay(300);
+         tft.fillRoundRect(0 , 0, 128, 30, 0, SCREEN_COLOR);
+         tft.fillRoundRect(0 , 98, 128, 30, 0, RED);
+         delay(300);
+      }
+    break;
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+      tft.setCursor(34,70);
+      tft.print("Bay ");
+      tft.print(bayNumber);
+      while(digitalRead(scaleUP) == HIGH){
+         tft.fillRoundRect(0 , 0, 128, 30, 0, RED);
+         tft.fillRoundRect(0 , 98, 128, 30, 0, SCREEN_COLOR);
+         delay(300);
+         tft.fillRoundRect(0 , 0, 128, 30, 0, SCREEN_COLOR);
+         tft.fillRoundRect(0 , 98, 128, 30, 0, RED);
+         delay(300);
+      }
+    break;
+  }
+  tft.fillScreen(SCREEN_COLOR);
+}
 
 String getSerialString(SoftwareSerial &ser){
   String dataT = "";
@@ -139,15 +172,34 @@ String getSerialString(SoftwareSerial &ser){
 }
 
 void displayStatic(){
+  if (serial3.available()>0) {
+    timeString = getSerialString(serial3);
+    Serial.println(timeString);
+    if(timeString == timeA){
+        Serial.println("hey there");
+      }
+  }
+  if (Serial.available()) {
+    serial3.write(Serial.read());
+  }
   tft.setCursor(17,113);
   tft.setTextSize(2);
   tft.setTextColor(BLUE, YELLOW);
   tft.print(timeString);
 }
 
-void displayStaticMenu(int pill_slot, int pill_time){
+void displayStaticMenu(pillInfo pill){
+  tft.setTextSize(2);
+  tft.setTextColor(GREEN, BLACK);
+  tft.setCursor(28,40);
+  tft.print("Bay: ");
+  tft.print(pill.pillBay);
+  tft.setCursor(5,60);
+  tft.print("Pills: ");
+  tft.print(pill.numOfPills);
+  
   tft.setTextSize(1);
-    if(pill_time == 1){
+    if(pill.timeOfDay == 1){
       tft.setTextColor(GREEN, BLACK);
       tft.fillTriangle(5, 15, 15, 0, 25, 15, GREEN);
       tft.setCursor(0,20);
@@ -158,7 +210,7 @@ void displayStaticMenu(int pill_slot, int pill_time){
       tft.setCursor(0,20);
       tft.print(timeA.substring(0,5));
     }
-    if(pill_time == 2){
+    if(pill.timeOfDay == 2){
       tft.setTextColor(GREEN, BLACK);
       tft.fillTriangle(53, 15, 63, 0, 73, 15, GREEN);
       tft.setCursor(48,20);
@@ -169,7 +221,7 @@ void displayStaticMenu(int pill_slot, int pill_time){
       tft.setCursor(48,20);
       tft.print(timeB.substring(0,5));
     }
-    if(pill_time == 3){
+    if(pill.timeOfDay == 3){
       tft.setTextColor(GREEN, BLACK);
       tft.fillTriangle(100, 15, 110, 0, 120, 15, GREEN);
       tft.setCursor(95,20);
@@ -187,6 +239,7 @@ void checkButtons(){
   if(buttonAState != buttonAPrev){
     if(buttonAState == HIGH){
     Serial.println("Button A Pressed");
+    bay[currentBay].timeOfDay = 1;
   }
   delay(50);
   }
@@ -196,6 +249,7 @@ void checkButtons(){
   if(buttonBState != buttonBPrev){
     if(buttonBState == HIGH){
     Serial.println("Button B Pressed");
+    bay[currentBay].timeOfDay = 2;
   }
   delay(50);
   }
@@ -205,6 +259,7 @@ void checkButtons(){
   if(buttonCState != buttonCPrev){
     if(buttonCState == HIGH){
     Serial.println("Button C Pressed");
+    bay[currentBay].timeOfDay = 3;
   }
   delay(50);
   }
@@ -213,7 +268,12 @@ void checkButtons(){
   toggleLState = digitalRead(toggleL);
   if(toggleLState != toggleLPrev){
     if(toggleLState == HIGH){
+      if(currentBay == 1)
+        currentBay = 4;
+      else
+        currentBay = currentBay - 1;
     Serial.println("Toggle L Pressed");
+    changeBays(currentBay);
   }
   delay(50);
   }
@@ -222,7 +282,12 @@ void checkButtons(){
   toggleRState = digitalRead(toggleR);
   if(toggleRState != toggleRPrev){
     if(toggleRState == HIGH){
+      if(currentBay == 4)
+        currentBay = 1;
+      else
+        currentBay = currentBay + 1;
     Serial.println("Toggle R Pressed");
+    changeBays(currentBay);
   }
   delay(50);
   }
@@ -235,9 +300,11 @@ void checkSwitchSysState(){
   if(SwitchSysState != SwitchSysPrev){
     if(SwitchSysState == LOW){
       Serial.println("System Switched to ON/LOW");
+      tft.fillScreen(SCREEN_COLOR);
     }
     else{
       Serial.println("System Switched to OFF/HIGH");
+      tft.fillScreen(SCREEN_COLOR);
     }
   delay(50);
   }
