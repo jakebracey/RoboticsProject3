@@ -64,8 +64,8 @@ float p = 3.1415926;
 Adafruit_SSD1351 tft = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, CS, DC, DIN, CLK, RST);
 SoftwareSerial serial3(serial3RX, serial3TX);
 String timeString;
-String timeA = "07:59:30";
-String timeB = "08:02:00";
+String timeA = "07:59:40";
+String timeB = "08:00:00";
 String timeC = "08:03:00";
 pillInfo bay[5];
 int currentBay = 1;
@@ -85,20 +85,22 @@ void setup() {
     serial3.begin(9600);
     tft.begin();
     tft.fillScreen(SCREEN_COLOR);
-    bay[1]={1,0,10};
-    bay[2]={2,0,0};
-    bay[3]={3,0,0};
-    bay[4]={4,0,0};
+    bay[1]={1,0,88};
+    bay[2]={2,1,7};
+    bay[3]={3,0,88};
+    bay[4]={4,1,88};
     
 }
 
 void loop() {
-  //changeBays(0);
   checkSwitchSysState();
-
   //ON - Pill Dispensing Mode
   if(SwitchSysState == LOW){
-    displayStatic();
+    displayStaticRun();
+    if(timeA == timeString){
+      displayPillAlert();
+      Serial.println("still works");
+    }
   }
   
   //OFF - Setup Mode
@@ -128,10 +130,10 @@ void changeBays(int bayNumber){
       while(digitalRead(scaleDOWN) == HIGH){
          tft.fillRoundRect(0 , 0, 128, 30, 0, RED);
          tft.fillRoundRect(0 , 98, 128, 30, 0, SCREEN_COLOR);
-         delay(300);
+         delay(400);
          tft.fillRoundRect(0 , 0, 128, 30, 0, SCREEN_COLOR);
          tft.fillRoundRect(0 , 98, 128, 30, 0, RED);
-         delay(300);
+         delay(400);
       }
     break;
     case 1:
@@ -171,21 +173,110 @@ String getSerialString(SoftwareSerial &ser){
   return dataT;
 }
 
-void displayStatic(){
+void displayStaticRun(){
   if (serial3.available()>0) {
     timeString = getSerialString(serial3);
     Serial.println(timeString);
-    if(timeString == timeA){
-        Serial.println("hey there");
-      }
   }
   if (Serial.available()) {
     serial3.write(Serial.read());
   }
   tft.setCursor(17,113);
   tft.setTextSize(2);
-  tft.setTextColor(BLUE, YELLOW);
+  tft.setTextColor(BLUE, BLACK);
   tft.print(timeString);
+  tft.setTextSize(1);
+  tft.setCursor(5,13);
+  tft.print("PB-1");
+  tft.setCursor(36,13);
+  tft.print("PB-2");
+  tft.setCursor(67,13);
+  tft.print("PB-3");
+  tft.setCursor(98,13);
+  tft.print("PB-4");
+  tft.setTextColor(RED, BLACK);
+  tft.setCursor(16,1);
+  tft.print("--- Schedule ---");
+  tft.setTextSize(1);
+  for(int i=1;i<=4;i++){
+    tft.setTextColor(GREEN, BLACK);
+    tft.setCursor(0+(i-1)*32,23);
+    switch(bay[i].timeOfDay){    
+      case 1:
+        tft.print(timeA.substring(0,5));
+      break;
+      case 2:
+        tft.print(timeB.substring(0,5));
+      break;
+      case 3:
+        tft.print(timeC.substring(0,5));
+      break;
+      default:
+        tft.setTextColor(RED, BLACK);
+        tft.setCursor(8+(i-1)*31,23);
+        tft.print("N/A");
+      break;
+    }
+  }
+  tft.setTextColor(BLUE, BLACK);
+  tft.setCursor(5,57);
+  tft.print("PB-1");
+  tft.setCursor(36,57);
+  tft.print("PB-2");
+  tft.setCursor(67,57);
+  tft.print("PB-3");
+  tft.setCursor(98,57);
+  tft.print("PB-4");
+  tft.setTextColor(RED, BLACK);
+  tft.setCursor(2,45);
+  tft.print("-- Pills Remaining --");
+  tft.setTextSize(2);
+  for(int i=1;i<=4;i++){
+    switch(bay[i].numOfPills){    
+      case 0:
+        tft.setTextColor(RED, BLACK);
+        tft.setCursor(12+(i-1)*31,67);
+        tft.print(bay[i].numOfPills);
+      break;
+      case 1 ... 6:
+        tft.setTextColor(YELLOW, BLACK);
+        tft.setCursor(8+(i-1)*33,67);
+        tft.print(bay[i].numOfPills);
+      break;
+      case 7 ... 9:
+        tft.setTextColor(GREEN, BLACK);
+        tft.setCursor(8+(i-1)*33,67);
+        tft.print(bay[i].numOfPills);
+      break;
+      default:
+        tft.setTextColor(GREEN, BLACK);
+        tft.setCursor(6+(i-1)*31,67);
+        tft.print(bay[i].numOfPills);
+      break;
+    }
+  }
+}
+
+void displayPillAlert(){
+  tft.fillScreen(YELLOW);
+  tft.setTextSize(2);
+  tft.setTextColor(BLACK, YELLOW);
+  tft.setCursor(23,70);
+  tft.print("ALERT!!");
+  tft.setTextSize(1);
+  tft.setCursor(14,100);
+  tft.print("Incorrect Number");
+  tft.setCursor(21,112);
+  tft.print("of Pills Taken");
+  tft.fillTriangle(53, 15, 63, 0, 73, 15, BLACK);
+  tft.setTextSize(2);
+  tft.setCursor(52,20);
+  tft.print("OK");
+  while(digitalRead(buttonB) == HIGH){
+    delay(500);
+    //checkButtonB();
+  }
+  tft.fillScreen(SCREEN_COLOR);
 }
 
 void displayStaticMenu(pillInfo pill){
@@ -232,6 +323,17 @@ void displayStaticMenu(pillInfo pill){
       tft.setCursor(95,20);
       tft.print(timeC.substring(0,5));
     }
+}
+
+void checkButtonB(){
+  buttonBState = digitalRead(buttonB);
+  if(buttonBState != buttonBPrev){
+    if(buttonBState == HIGH){
+    Serial.println("Button B Pressed");
+  }
+  delay(50);
+  }
+  buttonBPrev = buttonBState;
 }
 
 void checkButtons(){
