@@ -4,6 +4,7 @@
 #include <SPI.h>
 #include <SoftwareSerial.h>
 #include <stdio.h>
+#include <Math.h>
 
 //Screen Dimensions & Color Definitions
 #define SCREEN_WIDTH 128
@@ -16,7 +17,7 @@
 #define MAGENTA         0xF81F
 #define YELLOW          0xFFE0  
 #define WHITE           0xFFFF
-#define SCREEN_COLOR    BLACK
+#define SCREEN_COLOR    MAGENTA
 
 //Screen PIN definitions
 #define CLK 2
@@ -60,6 +61,14 @@ int toggleLPrev    = 1;
 int toggleRPrev    = 1;
 int SwitchSysPrev  = 1;
 
+//Scale Definitions
+#include <HX711.h>
+#define ScaleCalibration 377 //previously determined
+#define Scale_Data  19
+#define Scale_Clock  18
+HX711 scale;
+#define weight_bottle 104
+#define weight_pill 6.25
 
 //Global Variables
 float p = 3.1415926;
@@ -84,15 +93,22 @@ void setup() {
     pinMode(scaleUP, INPUT_PULLUP);
     pinMode(scaleDOWN, INPUT_PULLUP);
 
+    //scale initialization
+    scale.begin(Scale_Data, Scale_Clock);
+    scale.set_scale(ScaleCalibration);
+    delay(1000);
+    scale.tare(); //zero out scale
+    delay(1000);
+    
     Serial.begin(9600);
     serial2.begin(9600);
     serial3.begin(9600);
     tft.begin();
     tft.fillScreen(SCREEN_COLOR);
-    bay[1]={1,1,88};
-    bay[2]={2,1,6};
+    bay[1]={1,0,0};
+    bay[2]={2,0,0};
     bay[3]={3,1,0};
-    bay[4]={4,1,88};
+    bay[4]={4,1,0};
     
 }
 
@@ -117,12 +133,21 @@ void loop() {
   
   //OFF - Setup Mode
   else{
-    serial2.listen();
+      serial2.listen();
       displayStaticMenu(bay[currentBay]);
+      delay(500);
+      bay[currentBay].numOfPills = getPillsFromScale();
       checkButtons();
   }
-         
-      
+
+//    tft.setTextSize(2);
+//    tft.setTextColor(RED, BLACK);
+//    tft.setCursor(30,0); 
+//    int reading = scale.get_units();
+//    String weight = "--";
+//    weight+=abs(reading);
+//    weight+="--";
+//    tft.print(weight); 
       
 }//END of Loop
 
@@ -297,15 +322,31 @@ void displayPillAlert(){
   tft.fillScreen(SCREEN_COLOR);
 }
 
+int getPillsFromScale(){
+  int currentPills=0;
+  float reading = scale.get_units();
+  float weight = (abs(reading) - weight_bottle) / weight_pill;
+  if(weight < 0){
+    weight = 0;
+  }
+  currentPills = round(weight);
+  return currentPills;
+}
+
 void displayStaticMenu(pillInfo pill){
   tft.setTextSize(2);
   tft.setTextColor(GREEN, BLACK);
   tft.setCursor(28,40);
   tft.print("Bay: ");
   tft.print(pill.pillBay);
-  tft.setCursor(5,60);
-  tft.print("Pills: ");
-  tft.print(pill.numOfPills);
+  tft.setCursor(35,70);
+  tft.print("Pills");
+  tft.drawFastHLine(35,88,60,WHITE);
+  tft.setCursor(70,100);
+  String tempStr;
+  tempStr += pill.numOfPills;
+  tempStr += "    ";
+  tft.print(tempStr);
   
   tft.setTextSize(1);
     if(pill.timeOfDay == 1){
