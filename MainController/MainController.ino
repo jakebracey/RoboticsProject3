@@ -38,6 +38,8 @@
 //Serial Definitions
 #define serial3RX 50
 #define serial3TX 51
+#define serial2RX 50
+#define serial2TX 51
 
 typedef struct{
   int pillBay;
@@ -63,6 +65,7 @@ int SwitchSysPrev  = 1;
 float p = 3.1415926;
 Adafruit_SSD1351 tft = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, CS, DC, DIN, CLK, RST);
 SoftwareSerial serial3(serial3RX, serial3TX);
+SoftwareSerial serial2(serial2RX, serial2TX);
 String timeString;
 String timeA = "08:00:00";
 String timeB = "08:02:00";
@@ -82,6 +85,7 @@ void setup() {
     pinMode(scaleDOWN, INPUT_PULLUP);
 
     Serial.begin(9600);
+    serial2.begin(9600);
     serial3.begin(9600);
     tft.begin();
     tft.fillScreen(SCREEN_COLOR);
@@ -113,7 +117,7 @@ void loop() {
   
   //OFF - Setup Mode
   else{
-    
+    serial2.listen();
       displayStaticMenu(bay[currentBay]);
       checkButtons();
   }
@@ -179,6 +183,7 @@ String getSerialString(SoftwareSerial &ser){
 }
 
 void displayStaticRun(){
+  serial3.listen();
   if (serial3.available()>0) {
     String tempString = getSerialString(serial3);
     if(tempString.length()==8){
@@ -229,6 +234,7 @@ void displayStaticRun(){
         tft.print("N/A");
       break;
     }
+   
   }
   tft.setTextColor(BLUE, BLACK);
   tft.setCursor(5,57);
@@ -346,6 +352,19 @@ void checkButtonB(){
   delay(50);
   }
   buttonBPrev = buttonBState;
+}
+
+void controlSecondary(int bayNumber, bool goUP){
+  switch(bayNumber){
+    case 0:
+        serial2.print(currentBay);
+        if(goUP){
+          serial2.println("U");
+        }else{
+          serial2.println("D");
+        }
+    break;
+  }
 }
 
 void checkButtons(){
