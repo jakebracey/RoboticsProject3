@@ -64,8 +64,8 @@ float p = 3.1415926;
 Adafruit_SSD1351 tft = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, CS, DC, DIN, CLK, RST);
 SoftwareSerial serial3(serial3RX, serial3TX);
 String timeString;
-String timeA = "07:59:40";
-String timeB = "08:00:00";
+String timeA = "08:00:00";
+String timeB = "08:02:00";
 String timeC = "08:03:00";
 pillInfo bay[5];
 int currentBay = 1;
@@ -85,9 +85,9 @@ void setup() {
     serial3.begin(9600);
     tft.begin();
     tft.fillScreen(SCREEN_COLOR);
-    bay[1]={1,0,88};
-    bay[2]={2,1,7};
-    bay[3]={3,0,88};
+    bay[1]={1,1,88};
+    bay[2]={2,1,6};
+    bay[3]={3,1,0};
     bay[4]={4,1,88};
     
 }
@@ -99,7 +99,15 @@ void loop() {
     displayStaticRun();
     if(timeA == timeString){
       displayPillAlert();
-      Serial.println("still works");
+      Serial.println("timeA Pill");
+    }
+    if(timeB == timeString){
+      displayPillAlert();
+      Serial.println("timeB Pill");
+    }
+    if(timeC == timeString){
+      displayPillAlert();
+      Serial.println("timeC Pill");
     }
   }
   
@@ -136,10 +144,7 @@ void changeBays(int bayNumber){
          delay(400);
       }
     break;
-    case 1:
-    case 2:
-    case 3:
-    case 4:
+    case 1 ... 4:
       tft.setCursor(34,70);
       tft.print("Bay ");
       tft.print(bayNumber);
@@ -175,7 +180,11 @@ String getSerialString(SoftwareSerial &ser){
 
 void displayStaticRun(){
   if (serial3.available()>0) {
-    timeString = getSerialString(serial3);
+    String tempString = getSerialString(serial3);
+    if(tempString.length()==8){
+      timeString = tempString;
+    }
+    //timeString = getSerialString(serial3);
     Serial.println(timeString);
   }
   if (Serial.available()) {
@@ -188,10 +197,13 @@ void displayStaticRun(){
   tft.setTextSize(1);
   tft.setCursor(5,13);
   tft.print("PB-1");
+  tft.drawFastVLine(29,10,23,WHITE);
   tft.setCursor(36,13);
   tft.print("PB-2");
-  tft.setCursor(67,13);
+  tft.drawFastVLine(62,10,23,WHITE);
+  tft.setCursor(67,13); 
   tft.print("PB-3");
+  tft.drawFastVLine(94,10,23,WHITE);
   tft.setCursor(98,13);
   tft.print("PB-4");
   tft.setTextColor(RED, BLACK);
