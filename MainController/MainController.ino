@@ -17,7 +17,7 @@
 #define MAGENTA         0xF81F
 #define YELLOW          0xFFE0  
 #define WHITE           0xFFFF
-#define SCREEN_COLOR    MAGENTA
+#define SCREEN_COLOR    BLACK
 
 //Screen PIN definitions
 #define CLK 2
@@ -69,6 +69,7 @@ int SwitchSysPrev  = 1;
 HX711 scale;
 #define weight_bottle 104
 #define weight_pill 6.25
+#define pills_per_dose 1
 
 //Global Variables
 float p = 3.1415926;
@@ -80,7 +81,7 @@ String timeA = "08:00:00";
 String timeB = "08:02:00";
 String timeC = "08:03:00";
 pillInfo bay[5];
-int currentBay = 1;
+int currentBay = 2;
 
 void setup() {
     //pin initializations
@@ -105,37 +106,42 @@ void setup() {
     serial3.begin(9600);
     tft.begin();
     tft.fillScreen(SCREEN_COLOR);
-    bay[1]={1,0,0};
-    bay[2]={2,0,0};
-    bay[3]={3,1,0};
+    bay[1]={1,2,1};
+    bay[2]={2,3,4};
+    bay[3]={3,1,2};
     bay[4]={4,1,0};
+
+    SwitchSysPrev = digitalRead(SwitchSys);
     
 }
 
 void loop() {
+  
   checkSwitchSysState();
   //ON - Pill Dispensing Mode
   if(SwitchSysState == LOW){
+    //serial3.listen();
     displayStaticRun();
     if(timeA == timeString){
-      displayPillAlert();
       Serial.println("timeA Pill");
+      dispensePillSequence(1);
     }
     if(timeB == timeString){
-      displayPillAlert();
       Serial.println("timeB Pill");
+      dispensePillSequence(2);
     }
     if(timeC == timeString){
-      displayPillAlert();
       Serial.println("timeC Pill");
+      dispensePillSequence(3);
     }
   }
   
   //OFF - Setup Mode
   else{
+      //delay(500);
       serial2.listen();
       displayStaticMenu(bay[currentBay]);
-      delay(500);
+      //delay(500);
       bay[currentBay].numOfPills = getPillsFromScale();
       checkButtons();
   }
@@ -151,6 +157,69 @@ void loop() {
       
 }//END of Loop
 
+void dispensePillSequence(int pillTime){
+  for(int i=1;i<=4;i++){
+    if(bay[i].timeOfDay == pillTime && bay[i].numOfPills > 0){
+      changeBays(i);
+      dispensePill(true);
+      changeBays(0);
+      dispensePill(false);
+      delay(500);
+      int tempPills = getPillsFromScale();
+      if( (bay[i].numOfPills - pills_per_dose) != tempPills ){
+        displayPillAlert();
+      }
+      bay[i].numOfPills = tempPills;
+    }
+   
+  }
+}
+
+void dispensePill(bool takeBottle){
+  tft.fillScreen(GREEN);
+  tft.setTextSize(2);
+  tft.setTextColor(BLACK, GREEN);
+  tft.setCursor(10,110);
+  tft.print(pills_per_dose);
+  tft.print(" Pill(s)");
+  tft.setCursor(4,90);
+  tft.print("--DOSAGE--");
+  tft.setCursor(31,45);
+  tft.print("BOTTLE");
+  tft.setCursor(31,20);
+  if(takeBottle){
+    tft.print(" TAKE");
+    while(getPillsFromScale() >= 0){
+      delay(500);
+    }
+  }else{
+    tft.print("RETURN");
+    while(getPillsFromScale() < 0){
+      delay(500);
+    }
+  }
+  
+//  tft.setCursor(14,100);
+//  tft.print("Incorrect Number");
+//  tft.setCursor(21,112);
+//  tft.print("of Pills Taken");
+//  tft.fillTriangle(53, 15, 63, 0, 73, 15, BLACK);
+//  tft.setTextSize(2);
+//  tft.setCursor(52,20);
+//  tft.print("OK");
+  tft.fillScreen(SCREEN_COLOR);
+}
+
+int getPillsFromScale(){
+  float currentPills=0;
+  float reading = scale.get_units();
+  currentPills = (abs(reading) - weight_bottle) / weight_pill;
+  currentPills = round(currentPills);
+  if(currentPills < -1){
+    currentPills = -1;
+  }
+  return currentPills;
+}
 
 void changeBays(int bayNumber){
   tft.fillScreen(SCREEN_COLOR);
@@ -275,7 +344,12 @@ void displayStaticRun(){
   tft.print("-- Pills Remaining --");
   tft.setTextSize(2);
   for(int i=1;i<=4;i++){
-    switch(bay[i].numOfPills){    
+    switch(bay[i].numOfPills){
+       case -1:
+        tft.setTextColor(RED, BLACK);
+        tft.setCursor(12+(i-1)*31,67);
+        tft.print("X");
+      break;   
       case 0:
         tft.setTextColor(RED, BLACK);
         tft.setCursor(12+(i-1)*31,67);
@@ -322,17 +396,6 @@ void displayPillAlert(){
   tft.fillScreen(SCREEN_COLOR);
 }
 
-int getPillsFromScale(){
-  int currentPills=0;
-  float reading = scale.get_units();
-  float weight = (abs(reading) - weight_bottle) / weight_pill;
-  if(weight < 0){
-    weight = 0;
-  }
-  currentPills = round(weight);
-  return currentPills;
-}
-
 void displayStaticMenu(pillInfo pill){
   tft.setTextSize(2);
   tft.setTextColor(GREEN, BLACK);
@@ -342,11 +405,19 @@ void displayStaticMenu(pillInfo pill){
   tft.setCursor(35,70);
   tft.print("Pills");
   tft.drawFastHLine(35,88,60,WHITE);
-  tft.setCursor(70,100);
+  if(pill.numOfPills >= 0){
+  tft.setCursor(10,100);
   String tempStr;
+  tempStr += "    ";
   tempStr += pill.numOfPills;
   tempStr += "    ";
   tft.print(tempStr);
+  }else{
+    tft.setCursor(10,100);
+    tft.setTextColor(RED, BLACK);
+    tft.print("NO BOTTLE");
+  }
+  tft.setTextColor(GREEN, BLACK);
   
   tft.setTextSize(1);
     if(pill.timeOfDay == 1){
@@ -474,10 +545,12 @@ void checkSwitchSysState(){
   if(SwitchSysState != SwitchSysPrev){
     if(SwitchSysState == LOW){
       Serial.println("System Switched to ON/LOW");
+      changeBays(0); //make platform go down
       tft.fillScreen(SCREEN_COLOR);
     }
     else{
       Serial.println("System Switched to OFF/HIGH");
+      changeBays(currentBay); //make platform go up  
       tft.fillScreen(SCREEN_COLOR);
     }
   delay(50);
