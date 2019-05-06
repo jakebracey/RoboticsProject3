@@ -67,8 +67,8 @@ int SwitchSysPrev  = 1;
 #define Scale_Data  19
 #define Scale_Clock  18
 HX711 scale;
-#define weight_bottle 104
-#define weight_pill 6.25
+#define weight_bottle 25.6
+#define weight_pill 31.09
 #define pills_per_dose 1
 
 //Global Variables
@@ -116,7 +116,10 @@ void setup() {
 }
 
 void loop() {
-  
+
+
+  //controlSecondary(2,false);
+  //delay(1000);
   checkSwitchSysState();
   //ON - Pill Dispensing Mode
   if(SwitchSysState == LOW){
@@ -296,7 +299,7 @@ void displayStaticRun(){
   tft.setTextSize(1);
   tft.setCursor(5,13);
   tft.print("PB-1");
-  tft.drawFastVLine(29,10,23,WHITE);
+  tft.drawFastVLine(30,10,23,WHITE);
   tft.setCursor(36,13);
   tft.print("PB-2");
   tft.drawFastVLine(62,10,23,WHITE);
@@ -469,12 +472,64 @@ void checkButtonB(){
 void controlSecondary(int bayNumber, bool goUP){
   switch(bayNumber){
     case 0:
-        serial2.print(currentBay);
-        if(goUP){
-          serial2.println("U");
-        }else{
-          serial2.println("D");
+        switch(currentBay){
+          case 1:
+            if(goUP){
+              serial2.println('1');
+            }else{
+              serial2.println('q');
+            }
+          break;
+          case 2:
+            if(goUP){
+              serial2.println('2');
+            }else{
+              serial2.println('w');
+            }
+          break;
+          case 3:
+            if(goUP){
+              serial2.println('3');
+            }else{
+              serial2.println('e');
+            }
+          break;
+          case 4:
+            if(goUP){
+              serial2.println('4');
+            }else{
+              serial2.println('r');
+            }
+          break;
         }
+    break;
+    case 1:
+      if(goUP){
+        serial2.println('1');
+      }else{
+        serial2.println('q');
+      }
+    break;
+    case 2:
+      if(goUP){
+        serial2.println('2');
+      }else{
+        serial2.println('w');
+      }
+    break;
+    case 3:
+      if(goUP){
+        serial2.println('3');
+      }else{
+        serial2.println('e');
+      }
+    break;
+    case 4:
+      if(goUP){
+        serial2.println('4');
+      }else{
+        serial2.println('r');
+      }
     break;
   }
 }
