@@ -118,36 +118,37 @@ void setup() {
 void loop() {
 
 
-  //controlSecondary(2,false);
-  //delay(1000);
-  checkSwitchSysState();
-  //ON - Pill Dispensing Mode
-  if(SwitchSysState == LOW){
-    //serial3.listen();
-    displayStaticRun();
-    if(timeA == timeString){
-      Serial.println("timeA Pill");
-      dispensePillSequence(1);
-    }
-    if(timeB == timeString){
-      Serial.println("timeB Pill");
-      dispensePillSequence(2);
-    }
-    if(timeC == timeString){
-      Serial.println("timeC Pill");
-      dispensePillSequence(3);
-    }
-  }
+  controlSecondary(2,false);
+  delay(1000);
   
-  //OFF - Setup Mode
-  else{
-      //delay(500);
-      serial2.listen();
-      displayStaticMenu(bay[currentBay]);
-      //delay(500);
-      bay[currentBay].numOfPills = getPillsFromScale();
-      checkButtons();
-  }
+//  checkSwitchSysState();
+//  //ON - Pill Dispensing Mode
+//  if(SwitchSysState == LOW){
+//    //serial3.listen();
+//    displayStaticRun();
+//    if(timeA == timeString){
+//      Serial.println("timeA Pill");
+//      dispensePillSequence(1);
+//    }
+//    if(timeB == timeString){
+//      Serial.println("timeB Pill");
+//      dispensePillSequence(2);
+//    }
+//    if(timeC == timeString){
+//      Serial.println("timeC Pill");
+//      dispensePillSequence(3);
+//    }
+//  }
+//  
+//  //OFF - Setup Mode
+//  else{
+//      //delay(500);
+//      serial2.listen();
+//      displayStaticMenu(bay[currentBay]);
+//      //delay(500);
+//      bay[currentBay].numOfPills = getPillsFromScale();
+//      checkButtons();
+//  }
 
 //    tft.setTextSize(2);
 //    tft.setTextColor(RED, BLACK);
