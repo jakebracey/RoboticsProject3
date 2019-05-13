@@ -53,6 +53,7 @@ typedef struct{
   int numOfPills;
 }pillInfo;
 
+//variables for buttons & switches
 int buttonAState   = 0;
 int buttonBState   = 0;
 int buttonCState   = 0;
@@ -73,15 +74,16 @@ int SwitchSysPrev  = 1;
 #define Scale_Clock  18
 HX711 scale;
 #define weight_bottle 23
-//#define weight_pill 31.09
 #define weight_pill 4
 #define pills_per_dose 1
 
 //Global Variables
 float p = 3.1415926;
 Adafruit_SSD1351 tft = Adafruit_SSD1351(SCREEN_WIDTH, SCREEN_HEIGHT, CS, DC, DIN, CLK, RST);
-SoftwareSerial serial3(serial3RX, serial3TX);
-SoftwareSerial serial2(serial2RX, serial2TX);
+SoftwareSerial serial3(serial3RX, serial3TX); //communication to tertiary board
+SoftwareSerial serial2(serial2RX, serial2TX); //communication to secondary board
+
+//predefined strings for pill times
 String timeString;
 String timeA = "08:00:00";
 String timeB = "08:02:00";
@@ -112,23 +114,18 @@ void setup() {
     serial3.begin(9600);
     tft.begin();
     tft.fillScreen(SCREEN_COLOR);
+
+    //sets initial values for pill bays
     bay[1]={1,2,-1};
     bay[2]={2,3,-1};
     bay[3]={3,1,-1};
     bay[4]={4,1,-1};
 
     SwitchSysPrev = digitalRead(SwitchSys);
-    //tone(speakerPin,alarmTone);
 }
 
 void loop() {
-
-
-//  controlSecondary(2,false);
-//  dispensePill(true);
-//  delay(5000);
-  
-  
+ 
   checkSwitchSysState();
   //ON - Pill Dispensing Mode
   if(SwitchSysState == LOW){
@@ -157,18 +154,10 @@ void loop() {
       bay[currentBay].numOfPills = getPillsFromScale();
       checkButtons();
   }
-
-//    tft.setTextSize(2);
-//    tft.setTextColor(RED, BLACK);
-//    tft.setCursor(30,0); 
-//    int reading = scale.get_units();
-//    String weight = "--";
-//    weight+=abs(reading);
-//    weight+="--";
-//    tft.print(weight); 
       
 }//END of Loop
 
+//function to dispense all bottles for a given pill time
 void dispensePillSequence(int pillTime){
   for(int i=1;i<=4;i++){
     if(bay[i].timeOfDay == pillTime && bay[i].numOfPills > 0){
@@ -182,13 +171,13 @@ void dispensePillSequence(int pillTime){
         displayPillAlert();
       }
       bay[i].numOfPills = tempPills;
-    }
-   
+    }   
   }
 }
 
+//function to notify user of action required
 void dispensePill(bool takeBottle){
-  tone(speakerPin,alarmTone);
+  tone(speakerPin,alarmTone); //alerts user to grab or return bottle
   tft.fillScreen(GREEN);
   tft.setTextSize(2);
   tft.setTextColor(BLACK, GREEN);
@@ -212,17 +201,10 @@ void dispensePill(bool takeBottle){
     }
   }
   noTone(speakerPin);
-//  tft.setCursor(14,100);
-//  tft.print("Incorrect Number");
-//  tft.setCursor(21,112);
-//  tft.print("of Pills Taken");
-//  tft.fillTriangle(53, 15, 63, 0, 73, 15, BLACK);
-//  tft.setTextSize(2);
-//  tft.setCursor(52,20);
-//  tft.print("OK");
   tft.fillScreen(SCREEN_COLOR);
 }
 
+//weighs bottle and returns number of pills
 int getPillsFromScale(){
   float currentPills=0;
   float reading = scale.get_units();
@@ -234,6 +216,7 @@ int getPillsFromScale(){
   return currentPills;
 }
 
+//function to rotate pill wheel
 void changeBays(int bayNumber){
   tft.fillScreen(SCREEN_COLOR);
   tft.setTextSize(2);
@@ -274,31 +257,30 @@ void changeBays(int bayNumber){
   tft.fillScreen(SCREEN_COLOR);
 }
 
+//reads time from tertiary board
 String getSerialString(SoftwareSerial &ser){
-  String dataT = "";
-    
-    while (ser.available())
-    {
+  String dataT = "";   
+    while (ser.available()){
         char character = ser.read(); // Receive a single character from the software serial port
-        if (character == '\n')
-        {
+        if (character == '\n'){
             dataT.trim();
             return dataT;
         }
         dataT.concat(character); // Add the received character to the receive buffer
-  }
+     }
   dataT.trim();
   return dataT;
 }
 
+//refreshes main display with time & other info
 void displayStaticRun(){
+  //reads from tertiary serial port
   serial3.listen();
   if (serial3.available()>0) {
     String tempString = getSerialString(serial3);
     if(tempString.length()==8){
       timeString = tempString;
     }
-    //timeString = getSerialString(serial3);
     Serial.println(timeString);
   }
   if (Serial.available()) {
@@ -389,6 +371,7 @@ void displayStaticRun(){
   }
 }
 
+//notifies caretaker that incorrect # pills taken
 void displayPillAlert(){
   tft.fillScreen(YELLOW);
   tft.setTextSize(2);
@@ -411,6 +394,7 @@ void displayPillAlert(){
   tft.fillScreen(SCREEN_COLOR);
 }
 
+//refreshes menu for a given bay
 void displayStaticMenu(pillInfo pill){
   tft.setTextSize(2);
   tft.setTextColor(GREEN, BLACK);
@@ -432,8 +416,7 @@ void displayStaticMenu(pillInfo pill){
     tft.setTextColor(RED, BLACK);
     tft.print("NO BOTTLE");
   }
-  tft.setTextColor(GREEN, BLACK);
-  
+  tft.setTextColor(GREEN, BLACK); 
   tft.setTextSize(1);
     if(pill.timeOfDay == 1){
       tft.setTextColor(GREEN, BLACK);
@@ -470,6 +453,7 @@ void displayStaticMenu(pillInfo pill){
     }
 }
 
+//checks if button B was pressed
 void checkButtonB(){
   buttonBState = digitalRead(buttonB);
   if(buttonBState != buttonBPrev){
@@ -481,6 +465,7 @@ void checkButtonB(){
   buttonBPrev = buttonBState;
 }
 
+//sends controls to secondary board
 void controlSecondary(int bayNumber, bool goUP){
   switch(bayNumber){
     case 0:
@@ -546,6 +531,7 @@ void controlSecondary(int bayNumber, bool goUP){
   }
 }
 
+//checks if any buttons or toggles were activated
 void checkButtons(){
   buttonAState = digitalRead(buttonA);
   if(buttonAState != buttonAPrev){
@@ -607,6 +593,7 @@ void checkButtons(){
   
 }
 
+//checks the status of the system switch
 void checkSwitchSysState(){
   SwitchSysState = digitalRead(SwitchSys);
   if(SwitchSysState != SwitchSysPrev){
